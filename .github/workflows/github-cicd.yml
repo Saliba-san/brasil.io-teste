@@ -20,7 +20,6 @@ jobs:
       readiness-path: ${{ vars.INTEGRATION_READINESS_PATH || '/home/' }}
       readiness-timeout: ${{ fromJSON(vars.INTEGRATION_READINESS_TIMEOUT || '300') }}
       runtime-test-script: ${{ vars.INTEGRATION_TEST_SCRIPT }}
-    # Compatibility with current central interface; remove after central credential migration.
+    # Dojo credentials are managed centrally on the runner.
     secrets:
-      defectdojo-token: ${{ secrets.DEFECTDOJO_TOKEN }}
       platform-read-token: ${{ secrets.PLATFORM_READ_TOKEN }}

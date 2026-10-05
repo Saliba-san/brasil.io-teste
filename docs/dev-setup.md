@@ -186,9 +186,8 @@ imagem do build; readiness usa `http://web:5000/home/`. O Compose de desenvolvim
 `compose.yml` e os comandos make continuam iguais.
 
 Antes de executar, substituir repo/SHA central e digests de imagens auxiliares;
-configurar runner, scanners e bindings DefectDojo. O forwarding do token no caller
-ainda reflete a interface central atual, enquanto a credencial administrada pela
-plataforma permanece pendente. Nunca colocar tokens reais no YAML ou vars.
+configurar runner, scanners e bindings DefectDojo. O token Dojo é administrado pela plataforma em AWS Secrets Manager; o caller
+não o encaminha. O serviço do runner recebe apenas ARN/região do segredo. Nunca colocar tokens reais no YAML ou vars.
 Credenciais do Compose são exclusivamente sintéticas para integração.
 
 Os arquivos foram revisados estaticamente. Nenhum build, container, teste, scanner
