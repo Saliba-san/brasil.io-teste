@@ -1,0 +1,151 @@
+# Integration only. Replace auxiliary image placeholders before execution.
+# Central workflow replaces web.image with the verified build artifact.
+services:
+  web:
+    image: brasilio-candidate:local
+    command:
+    - /bin/bash
+    - -ec
+    - |-
+      python manage.py migrate --no-input
+      python manage.py schedule_traffic_control_jobs
+      # MinIO may still be starting; bound bucket bootstrap rather than assuming readiness.
+      for attempt in {1..30}; do
+        if python manage.py create_buckets; then break; fi
+        if [ "$$attempt" -eq 30 ]; then exit 1; fi
+        sleep 2
+      done
+      exec /app/bin/web.sh
+    environment:
+      ADMINS: App Admin|admin@myapp.example.com
+      ALLOWED_HOSTS: web,localhost,127.0.0.1
+      AWS_S3_ACCESS_KEY_ID: integration-root
+      AWS_S3_ENDPOINT_URL: http://storage:9000/
+      AWS_S3_SECRET_ACCESS_KEY: integration-only-password
+      AWS_STORAGE_BUCKET_NAME: main
+      DEFAULT_FILE_STORAGE: storages.backends.s3boto3.S3Boto3Storage
+      AWS_S3_CUSTOM_DOMAIN: storage:9000/main
+      AWS_S3_URL_PROTOCOL: 'http:'
+      CSRF_TRUSTED_ORIGINS: http://web:5000
+      DATABASE_URL: postgres://postgres:integration-only-password@db:5432/brasilio
+      DATABASE_CONN_MAX_AGE: '0'
+      DATA_DIR: /app/integration-data
+      DEBUG: 'False'
+      DEBUG_SQL: 'False'
+      DJANGO_SETTINGS_MODULE: project.settings
+      DEFAULT_FROM_EMAIL: root@localhost
+      EMAIL_HOST: localhost
+      EMAIL_HOST_PASSWORD: ''
+      EMAIL_HOST_USER: ''
+      EMAIL_PORT: '1025'
+      EMAIL_USE_SSL: 'False'
+      EMAIL_USE_TLS: 'False'
+      EMAIL_TIMEOUT: '15'
+      ENV_TYPE: production
+      GUNICORN_WORKERS: '1'
+      REDIS_CACHE_URL: redis://messaging:6379/0
+      REDIS_TASKS_URL: redis://messaging:6379/1
+      SECRET_KEY: integration-only-not-a-production-secret
+      SENTRY_DSN: ''
+      APP_HOST: web:5000
+      BLOCKED_AGENTS: Wget,curl,python-requests,Python-urllib
+      BRASILIO_API_HOST: api.web:5000
+      DATABASE_STATEMENT_TIMEOUT: '25000'
+      DATA_URL: http://storage:9000/dataset/
+      FERNET_KEY: 1Vo_8aX-WIKEyOWsusu8SHdMDc258elXTN4-WYu_9MQ=
+      RECAPTCHA_PUBLIC_KEY: CHAVE_PUBLICA_RECAPTCHA
+      RECAPTCHA_PRIVATE_KEY: CHAVE_PRIVADA_RECAPTCHA
+      DISABLE_RECAPTCHA: 'True'
+      CACHE_ENABLED: 'False'
+      CACHE_BACKEND: django_redis.cache.RedisCache
+      CACHE_CLIENT_CLASS: django_redis.client.DefaultClient
+      CACHE_KEY_PREFIX: datacache
+      STATICFILES_STORAGE: django.contrib.staticfiles.storage.StaticFilesStorage
+      THROTTLING_RATE: ''
+      API_MAX_PAGINATION_RECORDS: '1000000'
+      API_ABUSIVE_USER_THRESHOLD: '50'
+      API_ABUSIVE_USER_WINDOW_HOURS: '24'
+      RATELIMIT_ENABLE: 'False'
+      RATELIMIT_RATE: 50/m
+      ENABLE_API_AUTH: 'True'
+      AWS_DEFAULT_ACL: ''
+      AWS_BUCKET_ACL: ''
+      AWS_AUTO_CREATE_BUCKET: 'False'
+      AWS_IS_GZIPPED: 'False'
+      GZIP_CONTENT_TYPES: ''
+      AWS_S3_DATASETS_BUCKET_NAME: dataset
+      AWS_S3_DATASET_DOWNLOAD_CHUNK_SIZE: '8388608'
+      AWS_S3_DATASET_SHA512SUMS_FILENAME: SHA512SUMS
+      AWS_S3_DATASET_TABLES_FILES_LIST_FILENAME: _meta/list.html
+      ROCKETCHAT_BASE_URL: ''
+      ROCKETCHAT_USERNAME: ''
+      ROCKETCHAT_PASSWORD: ''
+      CSV_EXPORT_MAX_ROWS: '10000'
+      RQ_BLOCKED_REQUESTS_LIST: blocked_reqs
+      CLOUDFLARE_AUTH_EMAIL: ''
+      CLOUDFLARE_AUTH_KEY: ''
+      CLOUDFLARE_ACCOUNT_NAME: ''
+      CLOUDFLARE_BLOCKED_IPS_RULE: ''
+      ACCOUNT_ACTIVATION_DAYS: '7'
+      REGISTRATION_SALT: registration_salt
+      REGISTRATION_OPEN: 'True'
+      WEB_TIMEOUT: '60'
+      PORT: '5000'
+      USE_ASGI: 'false'
+    expose:
+    - '5000'
+    depends_on:
+      db:
+        condition: service_healthy
+      messaging:
+        condition: service_healthy
+      storage:
+        condition: service_started
+  db:
+    image: postgres:17.6-trixie@sha256:REPLACE_WITH_VERIFIED_DIGEST
+    user: postgres
+    environment:
+      POSTGRES_DB: brasilio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: integration-only-password
+      PGDATA: /tmp/pgdata
+    command:
+    - postgres
+    - -c
+    - unix_socket_directories=/tmp
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -h 127.0.0.1 -U postgres -d brasilio
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  messaging:
+    image: redis:6.2-alpine@sha256:REPLACE_WITH_VERIFIED_DIGEST
+    user: redis
+    command:
+    - redis-server
+    - --dir
+    - /tmp
+    - --save
+    - ''
+    - --appendonly
+    - 'no'
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  storage:
+    image: minio/minio:REPLACE_WITH_REVIEWED_RELEASE@sha256:REPLACE_WITH_VERIFIED_DIGEST
+    command:
+    - server
+    - /tmp/brasilio-storage
+    - --address
+    - :9000
+    environment:
+      MINIO_ROOT_USER: integration-root
+      MINIO_ROOT_PASSWORD: integration-only-password

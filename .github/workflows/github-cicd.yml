@@ -1,0 +1,26 @@
+name: Brasil.IO — GitHub CI/CD
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch: null
+permissions:
+  contents: read
+jobs:
+  security:
+    uses: OWNER/REPOSITORY/.github/workflows/security.yml@REVIEWED_COMMIT_SHA
+    with:
+      build-context: '.'
+      dockerfile: Dockerfile
+      integration-compose: docker-compose.integration.yml
+      image-service: ${{ vars.INTEGRATION_IMAGE_SERVICE || 'web' }}
+      target-service: ${{ vars.DAST_TARGET_SERVICE || 'web' }}
+      target-port: ${{ fromJSON(vars.DAST_TARGET_PORT || '5000') }}
+      target-path: ${{ vars.DAST_TARGET_PATH || '/' }}
+      readiness-path: ${{ vars.INTEGRATION_READINESS_PATH || '/home/' }}
+      readiness-timeout: ${{ fromJSON(vars.INTEGRATION_READINESS_TIMEOUT || '300') }}
+      runtime-test-script: ${{ vars.INTEGRATION_TEST_SCRIPT }}
+    # Compatibility with current central interface; remove after central credential migration.
+    secrets:
+      defectdojo-token: ${{ secrets.DEFECTDOJO_TOKEN }}
+      platform-read-token: ${{ secrets.PLATFORM_READ_TOKEN }}

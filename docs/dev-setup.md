@@ -172,3 +172,26 @@ Além disso, o [processo de integração
 contínua](https://github.com/turicas/brasil.io/blob/develop/.github/workflows/django.yml) também espera que o código
 respeite algumas regras como, por exemplo, não deixarmos importações de código não utilizados. Para garantir que seu
 código está no formato esperado, sempre execute `make lint` antes de fazer seus commits.
+
+## GitHub CI/CD e integração de segurança
+
+O workflow `.github/workflows/github-cicd.yml` chama a plataforma central de CI/CD
+no push em `develop` ou execução manual. Os parâmetros da aplicação ficam em
+`with:`, com defaults e overrides via variáveis GitHub. O caller não contém lógica
+dos scanners nem adiciona publicação/deploy. `django.yml` continua separado.
+
+`docker-compose.integration.yml` é a topologia efêmera de web/PostgreSQL/Redis/MinIO,
+sem portas no host, bind mounts ou rebuild. A plataforma substitui `web.image` pela
+imagem do build; readiness usa `http://web:5000/home/`. O Compose de desenvolvimento
+`compose.yml` e os comandos make continuam iguais.
+
+Antes de executar, substituir repo/SHA central e digests de imagens auxiliares;
+configurar runner, scanners e bindings DefectDojo. O forwarding do token no caller
+ainda reflete a interface central atual, enquanto a credencial administrada pela
+plataforma permanece pendente. Nunca colocar tokens reais no YAML ou vars.
+Credenciais do Compose são exclusivamente sintéticas para integração.
+
+Os arquivos foram revisados estaticamente. Nenhum build, container, teste, scanner
+ou API foi executado. Não há datasets, workers ou cobertura autenticada de API
+nesse caminho inicial; validar startup/permissões/readiness no host autorizado
+antes de alegar funcionamento.
