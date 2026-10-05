@@ -175,22 +175,21 @@ código está no formato esperado, sempre execute `make lint` antes de fazer seu
 
 ## GitHub CI/CD e integração de segurança
 
-O workflow `.github/workflows/github-cicd.yml` chama a plataforma central de CI/CD
-no push em `develop` ou execução manual. Os parâmetros da aplicação ficam em
-`with:`, com defaults e overrides via variáveis GitHub. O caller não contém lógica
-dos scanners nem adiciona publicação/deploy. `django.yml` continua separado.
+A execução de segurança começa manualmente em **GitHub CI/CD**, no repositório
+privado `Saliba-san/security_pipeline`. Este fork público não chama workflows
+privados; o caller antigo foi removido. `django.yml` continua separado.
 
-`docker-compose.integration.yml` é a topologia efêmera de web/PostgreSQL/Redis/MinIO,
-sem portas no host, bind mounts ou rebuild. A plataforma substitui `web.image` pela
-imagem do build; readiness usa `http://web:5000/home/`. O Compose de desenvolvimento
-`compose.yml` e os comandos make continuam iguais.
+Selecionar `Saliba-san/brasil.io-teste` e o SHA completo de uma revisão publicada e
+revisada. Inputs: build context `.`, Dockerfile `Dockerfile`, Compose
+`docker-compose.integration.yml`, image services e target service `web`, port `5000`
+e readiness `/home/`. O Compose é efêmero, com web/PostgreSQL/Redis/MinIO e sem
+portas no host, bind mounts ou rebuild. A imagem web vem do build único.
+O Compose de desenvolvimento e os comandos make permanecem iguais.
 
-Antes de executar, substituir repo/SHA central e digests de imagens auxiliares;
-configurar runner, scanners e bindings DefectDojo. O token Dojo é administrado pela plataforma em AWS Secrets Manager; o caller
-não o encaminha. O serviço do runner recebe apenas ARN/região do segredo. Nunca colocar tokens reais no YAML ou vars.
-Credenciais do Compose são exclusivamente sintéticas para integração.
+Substituir digests auxiliares antes de executar. Runner, scanners, bindings Dojo,
+credenciais Parameter Store e artifacts ficam na plataforma privada. Este fork
+não recebe tokens nem precisa de runner de segurança próprio. Credenciais Compose
+são sintéticas. Configurar timeout e hooks opcionais nas variáveis centrais.
 
-Os arquivos foram revisados estaticamente. Nenhum build, container, teste, scanner
-ou API foi executado. Não há datasets, workers ou cobertura autenticada de API
-nesse caminho inicial; validar startup/permissões/readiness no host autorizado
-antes de alegar funcionamento.
+Revisão somente estática. Nenhum build, container, teste, scanner ou API executado.
+Não há datasets, workers ou cobertura autenticada neste caminho inicial.
