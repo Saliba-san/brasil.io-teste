@@ -186,7 +186,11 @@ e readiness `/home/`. O Compose é efêmero, com web/PostgreSQL/Redis/MinIO e se
 portas no host, bind mounts ou rebuild. A imagem web vem do build único.
 O Compose de desenvolvimento e os comandos make permanecem iguais.
 
-Substituir digests auxiliares antes de executar. Runner, scanners, bindings Dojo,
+PostgreSQL 17.6 e Redis 6.2.24 estao fixados por manifests linux/amd64 verificados
+em 2026-10-06. MinIO continua pendente: Docker Hub rejeitou o acesso e Quay
+retornou HTTP 401 para RELEASE.2025-09-07T16-13-09Z. Nao executar a fase
+de integracao com esse placeholder; definir uma imagem revisada primeiro.
+Runner, scanners, registros Dojo,
 credenciais Parameter Store e artifacts ficam na plataforma privada. Este fork
 não recebe tokens nem precisa de runner de segurança próprio. Credenciais Compose
 são sintéticas. Configurar timeout e hooks opcionais nas variáveis centrais.

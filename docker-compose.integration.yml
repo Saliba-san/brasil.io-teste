@@ -102,7 +102,7 @@ services:
       storage:
         condition: service_started
   db:
-    image: postgres:17.6-trixie@sha256:REPLACE_WITH_VERIFIED_DIGEST
+    image: postgres:17.6-trixie@sha256:b86568d3e0fe1dfaeff52714f9da36f206a30e4c49131b82bf96982d78627409
     user: postgres
     environment:
       POSTGRES_DB: brasilio
@@ -121,7 +121,7 @@ services:
       timeout: 3s
       retries: 30
   messaging:
-    image: redis:6.2-alpine@sha256:REPLACE_WITH_VERIFIED_DIGEST
+    image: redis:6.2.24-alpine@sha256:f144fc965e3a2f3027a6c66bce596c8b780096380dad0b71d6245fa1a32bbe23
     user: redis
     command:
     - redis-server
