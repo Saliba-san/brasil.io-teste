@@ -182,14 +182,23 @@ privados; o caller antigo foi removido. `django.yml` continua separado.
 Selecionar `Saliba-san/brasil.io-teste` e o SHA completo de uma revisão publicada e
 revisada. Inputs: build context `.`, Dockerfile `Dockerfile`, Compose
 `docker-compose.integration.yml`, image services e target service `web`, port `5000`
-e readiness `/home/`. O Compose é efêmero, com web/PostgreSQL/Redis/MinIO e sem
+e readiness `/home/`. O Compose é efêmero, com web/PostgreSQL/Redis e sem
 portas no host, bind mounts ou rebuild. A imagem web vem do build único.
 O Compose de desenvolvimento e os comandos make permanecem iguais.
 
-PostgreSQL 17.6 e Redis 6.2.24 estao fixados por manifests linux/amd64 verificados
-em 2026-10-06. MinIO continua pendente: Docker Hub rejeitou o acesso e Quay
-retornou HTTP 401 para RELEASE.2025-09-07T16-13-09Z. Nao executar a fase
-de integracao com esse placeholder; definir uma imagem revisada primeiro.
+PostgreSQL 17.6 e Redis 6.2.24 estão fixados por manifests linux/amd64 verificados
+em 2026-10-06. A integração usa `django.core.files.storage.FileSystemStorage`,
+com `MEDIA_ROOT=/tmp/brasilio-media`, criado pelo usuário django antes do servidor.
+MinIO e a criação de buckets foram removidos apenas desse Compose. Os arquivos
+locais são temporários e desaparecem com o container.
+
+O cliente S3 próprio em `project/storage.py` permanece na aplicação. As variáveis
+S3 obrigatórias mantêm valores sintéticos e apontam para `http://127.0.0.1:9/`,
+sem serviço de armazenamento. Upload/publicação de datasets, cópia e exclusão S3
+não estão disponíveis nesse ambiente. O backend Django local não substitui esse
+cliente. Com DEBUG=False, não foi configurado um servidor HTTP para mídia enviada;
+a entrega desses arquivos também não faz parte da cobertura inicial.
+
 Runner, scanners, registros Dojo,
 credenciais Parameter Store e artifacts ficam na plataforma privada. Este fork
 não recebe tokens nem precisa de runner de segurança próprio. Credenciais Compose

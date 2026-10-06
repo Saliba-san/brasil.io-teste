@@ -1,4 +1,4 @@
-# Integration only. Replace auxiliary image placeholders before execution.
+# Integration only: local filesystem storage; S3 dataset publishing is excluded.
 # Central workflow replaces web.image with the verified build artifact.
 services:
   web:
@@ -9,22 +9,19 @@ services:
     - |-
       python manage.py migrate --no-input
       python manage.py schedule_traffic_control_jobs
-      # MinIO may still be starting; bound bucket bootstrap rather than assuming readiness.
-      for attempt in {1..30}; do
-        if python manage.py create_buckets; then break; fi
-        if [ "$$attempt" -eq 30 ]; then exit 1; fi
-        sleep 2
-      done
+      mkdir -p /tmp/brasilio-media
       exec /app/bin/web.sh
     environment:
       ADMINS: App Admin|admin@myapp.example.com
       ALLOWED_HOSTS: web,localhost,127.0.0.1
+      # Required legacy S3 settings; loopback port 9 disables excluded S3 operations.
       AWS_S3_ACCESS_KEY_ID: integration-root
-      AWS_S3_ENDPOINT_URL: http://storage:9000/
+      AWS_S3_ENDPOINT_URL: http://127.0.0.1:9/
       AWS_S3_SECRET_ACCESS_KEY: integration-only-password
       AWS_STORAGE_BUCKET_NAME: main
-      DEFAULT_FILE_STORAGE: storages.backends.s3boto3.S3Boto3Storage
-      AWS_S3_CUSTOM_DOMAIN: storage:9000/main
+      DEFAULT_FILE_STORAGE: django.core.files.storage.FileSystemStorage
+      MEDIA_ROOT: /tmp/brasilio-media
+      AWS_S3_CUSTOM_DOMAIN: ''
       AWS_S3_URL_PROTOCOL: 'http:'
       CSRF_TRUSTED_ORIGINS: http://web:5000
       DATABASE_URL: postgres://postgres:integration-only-password@db:5432/brasilio
@@ -51,7 +48,7 @@ services:
       BLOCKED_AGENTS: Wget,curl,python-requests,Python-urllib
       BRASILIO_API_HOST: api.web:5000
       DATABASE_STATEMENT_TIMEOUT: '25000'
-      DATA_URL: http://storage:9000/dataset/
+      DATA_URL: http://127.0.0.1:9/dataset/
       FERNET_KEY: 1Vo_8aX-WIKEyOWsusu8SHdMDc258elXTN4-WYu_9MQ=
       RECAPTCHA_PUBLIC_KEY: CHAVE_PUBLICA_RECAPTCHA
       RECAPTCHA_PRIVATE_KEY: CHAVE_PRIVADA_RECAPTCHA
@@ -99,8 +96,6 @@ services:
         condition: service_healthy
       messaging:
         condition: service_healthy
-      storage:
-        condition: service_started
   db:
     image: postgres:17.6-trixie@sha256:b86568d3e0fe1dfaeff52714f9da36f206a30e4c49131b82bf96982d78627409
     user: postgres
@@ -139,13 +134,3 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
-  storage:
-    image: minio/minio:REPLACE_WITH_REVIEWED_RELEASE@sha256:REPLACE_WITH_VERIFIED_DIGEST
-    command:
-    - server
-    - /tmp/brasilio-storage
-    - --address
-    - :9000
-    environment:
-      MINIO_ROOT_USER: integration-root
-      MINIO_ROOT_PASSWORD: integration-only-password
