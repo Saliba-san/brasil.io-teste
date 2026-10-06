@@ -246,3 +246,11 @@ central, que continua seu cleanup. Falha de API, resposta inválida e timeout fa
 o caller; não há retry automático do dispatch. Pull requests não disparam esse job.
 Proteção de branch como check obrigatório e login autenticado no ZAP são trabalhos
 separados. Para verificar, configure o secret e execute manualmente em `develop`.
+
+### Dispatch público retirado
+
+O caller de dispatch foi substituído pelo repositório privado independente
+`Saliba-san/brasilio-assessment`, que chama workflows centrais nativamente.
+Este fork público mantém o código e a integração como referência de origem;
+não executa a avaliação central nem precisa de `CENTRAL_PIPELINE_TOKEN`.
+As instruções anteriores de dispatch são históricas.
