@@ -104,10 +104,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: integration-only-password
       PGDATA: /tmp/pgdata
-    command:
-    - postgres
-    - -c
-    - unix_socket_directories=/tmp
     healthcheck:
       test:
       - CMD-SHELL

@@ -206,3 +206,7 @@ são sintéticas. Configurar timeout e hooks opcionais nas variáveis centrais.
 
 Revisão somente estática. Nenhum build, container, teste, scanner ou API executado.
 Não há datasets, workers ou cobertura autenticada neste caminho inicial.
+
+PostgreSQL mantém o socket padrão em `/var/run/postgresql`, usado pelo script
+de inicialização da imagem. Apenas `PGDATA` é redirecionado para `/tmp/pgdata`;
+o banco continua executando como `postgres`, sem capabilities Linux.
