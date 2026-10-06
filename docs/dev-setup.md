@@ -222,3 +222,27 @@ sintéticas e exclusivas do banco efêmero; não reutilize em outros ambientes.
 
 Novas fixtures e dados pertencem ao comando da aplicação; a plataforma só executa
 o hook e registra seu resultado. Esse preparo ainda não configura login no ZAP.
+
+### GitHub CI/CD central por dispatch
+
+`GitHub CI/CD` inicia avaliação na plataforma privada após push em `develop`
+ou execução manual nessa mesma branch. Usa o SHA exato do evento e aguarda o
+resultado central; sucesso exige conclusão `success`. Django CI segue independente.
+
+Configure o secret de Actions `CENTRAL_PIPELINE_TOKEN` com um PAT fine-grained
+selecionando apenas `Saliba-san/security_pipeline`, permissão **Actions: write**.
+Não reutilize PAT de registro de runner nem credenciais Dojo/AWS. Essa permissão
+permite outras operações de Actions; não equivale a autorização somente de dispatch.
+O token normal deste repositório não acessa automaticamente a plataforma privada.
+
+O caller usa variáveis `SECURITY_BUILD_CONTEXT`, `SECURITY_DOCKERFILE`,
+`SECURITY_INTEGRATION_COMPOSE`, `SECURITY_IMAGE_SERVICES`, `SECURITY_TARGET_SERVICE`,
+`SECURITY_TARGET_PORT`, `SECURITY_READINESS_PATH` e `SECURITY_BOOTSTRAP_SCRIPT`,
+com defaults explícitos do Brasil.IO no YAML. Nenhum JSON de parâmetros é versionado.
+
+O summary público contém link da execução privada e conclusão, sem findings.
+Timeout de 120 minutos inclui fila central. Cancelar o caller não cancela a execução
+central, que continua seu cleanup. Falha de API, resposta inválida e timeout falham
+o caller; não há retry automático do dispatch. Pull requests não disparam esse job.
+Proteção de branch como check obrigatório e login autenticado no ZAP são trabalhos
+separados. Para verificar, configure o secret e execute manualmente em `develop`.

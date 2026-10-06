@@ -1,0 +1,96 @@
+name: GitHub CI/CD
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-assessment:
+    name: Central security assessment
+    # Only this reviewed branch may submit code to the shared platform host.
+    if: github.repository == 'Saliba-san/brasil.io-teste' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      CENTRAL_REPOSITORY: Saliba-san/security_pipeline
+      CENTRAL_REF: master
+      APPLICATION_REPOSITORY: ${{ github.repository }}
+      APPLICATION_SHA: ${{ github.sha }}
+      BUILD_CONTEXT: ${{ vars.SECURITY_BUILD_CONTEXT || '.' }}
+      DOCKERFILE: ${{ vars.SECURITY_DOCKERFILE || 'Dockerfile' }}
+      INTEGRATION_COMPOSE: ${{ vars.SECURITY_INTEGRATION_COMPOSE || 'docker-compose.integration.yml' }}
+      IMAGE_SERVICES: ${{ vars.SECURITY_IMAGE_SERVICES || 'web' }}
+      TARGET_SERVICE: ${{ vars.SECURITY_TARGET_SERVICE || 'web' }}
+      TARGET_PORT: ${{ vars.SECURITY_TARGET_PORT || '5000' }}
+      READINESS_PATH: ${{ vars.SECURITY_READINESS_PATH || '/home/' }}
+      BOOTSTRAP_SCRIPT: ${{ vars.SECURITY_BOOTSTRAP_SCRIPT || 'bin/integration-bootstrap.sh' }}
+
+    steps:
+      - name: Dispatch the reviewed application commit
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ secrets.CENTRAL_PIPELINE_TOKEN }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo '::error::Configure CENTRAL_PIPELINE_TOKEN with Actions write on the central repository.'
+            exit 1
+          fi
+          # Dispatch once. Retrying an ambiguous failure could create duplicate runs.
+          response=$(jq -n \
+            --arg ref "$CENTRAL_REF" \
+            --arg repository "$APPLICATION_REPOSITORY" \
+            --arg revision "$APPLICATION_SHA" \
+            --arg context "$BUILD_CONTEXT" --arg dockerfile "$DOCKERFILE" \
+            --arg compose "$INTEGRATION_COMPOSE" --arg services "$IMAGE_SERVICES" \
+            --arg service "$TARGET_SERVICE" --arg port "$TARGET_PORT" \
+            --arg readiness "$READINESS_PATH" --arg bootstrap "$BOOTSTRAP_SCRIPT" '
+            {ref:$ref, inputs:{
+              "application-repository":$repository, "application-ref":$revision,
+              "build-context":$context, "dockerfile":$dockerfile,
+              "integration-compose":$compose, "image-services":$services,
+              "target-service":$service, "target-port":$port,
+              "readiness-path":$readiness, "integration-bootstrap-script":$bootstrap
+            }}
+          ' | gh api --method POST \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$CENTRAL_REPOSITORY/actions/workflows/github-cicd.yml/dispatches" \
+            --input -)
+          run_id=$(jq -er '.workflow_run_id | select(type == "number" and . > 0 and . == floor)' <<< "$response")
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+          run_url="https://github.com/$CENTRAL_REPOSITORY/actions/runs/$run_id"
+          echo "Central assessment: $run_url"
+          printf '## Central security assessment\n\nCommit: `%s`\n\n[View central run](%s)\n' \
+            "$APPLICATION_SHA" "$run_url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Wait for the central security result
+        env:
+          GH_TOKEN: ${{ secrets.CENTRAL_PIPELINE_TOKEN }}
+          CENTRAL_RUN_ID: ${{ steps.dispatch.outputs.run-id }}
+        run: |
+          # Leave time before the job deadline; the queue is included in this wait.
+          deadline=$((SECONDS + 7080))
+          while (( SECONDS < deadline )); do
+            result=$(gh api -H 'X-GitHub-Api-Version: 2026-03-10' \
+              "repos/$CENTRAL_REPOSITORY/actions/runs/$CENTRAL_RUN_ID")
+            status=$(jq -er '.status | select(type == "string" and length > 0)' <<< "$result")
+            echo "Central assessment status: $status"
+            if [[ "$status" == completed ]]; then
+              conclusion=$(jq -er '.conclusion | select(type == "string" and length > 0)' <<< "$result")
+              printf '\nCentral conclusion: **%s**\n' "$conclusion" >> "$GITHUB_STEP_SUMMARY"
+              if [[ "$conclusion" == success ]]; then
+                exit 0
+              fi
+              echo "::error::Central security assessment concluded $conclusion"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo '::error::Timed out waiting for central security assessment; the central run remains active.'
+          exit 1
