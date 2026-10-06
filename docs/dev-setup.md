@@ -210,3 +210,15 @@ Não há datasets, workers ou cobertura autenticada neste caminho inicial.
 PostgreSQL mantém o socket padrão em `/var/run/postgresql`, usado pelo script
 de inicialização da imagem. Apenas `PGDATA` é redirecionado para `/tmp/pgdata`;
 o banco continua executando como `postgres`, sem capabilities Linux.
+
+### Preparação central de integração
+
+No dispatch da plataforma, configure `integration-bootstrap-script` como
+`bin/integration-bootstrap.sh`. Após readiness e migrações de startup, o hook
+executa `prepara_integracao` dentro do serviço `web`, usando a imagem já construída.
+O comando cria ou atualiza um usuário comum ativo, sem staff/superuser. Repetições
+reutilizam o mesmo usuário. As credenciais `INTEGRATION_TEST_*` no Compose são
+sintéticas e exclusivas do banco efêmero; não reutilize em outros ambientes.
+
+Novas fixtures e dados pertencem ao comando da aplicação; a plataforma só executa
+o hook e registra seu resultado. Esse preparo ainda não configura login no ZAP.

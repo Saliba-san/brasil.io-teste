@@ -12,6 +12,10 @@ services:
       mkdir -p /tmp/brasilio-media
       exec /app/bin/web.sh
     environment:
+      # Credenciais sintéticas, exclusivas do banco efêmero de integração.
+      INTEGRATION_BOOTSTRAP: 'true'
+      INTEGRATION_TEST_USERNAME: zap-assessment
+      INTEGRATION_TEST_PASSWORD: integration-only-zap-password
       ADMINS: App Admin|admin@myapp.example.com
       ALLOWED_HOSTS: web,localhost,127.0.0.1
       # Required legacy S3 settings; loopback port 9 disables excluded S3 operations.
